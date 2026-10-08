@@ -25,7 +25,20 @@ By default each tile receives the sender's low-bandwidth preview stream, as
 hardware multiviewers do, so a 16-up grid stays light on CPU and network.
 `--bandwidth highest` requests full quality.
 
-## Run it
+## Download
+
+Every push builds the app for Windows and macOS (Apple Silicon and Intel) on
+GitHub Actions; grab the zip from the run's **Artifacts**, or from
+**Releases** for tagged versions (`git tag v0.1.0 && git push --tags`).
+
+- **Windows:** unzip and run `NDI Multiviewer.exe`. Allow it through the
+  firewall when asked, or NDI sources won't appear.
+- **macOS:** unzip and move the app to Applications. The build isn't signed
+  with an Apple developer ID yet, so the first time, right-click it and choose
+  **Open**. Click **Allow** when macOS asks about finding devices on your
+  local network, or NDI sources won't appear.
+
+## Run from source
 
 Needs Python 3.10+. The NDI runtime ships inside the `cyndilib` wheel, so
 there's nothing else to install.
@@ -71,10 +84,20 @@ The autosaved file lives in the per-user config folder unless `--layout` is give
 3. Clock and on-screen labels editable per tile
 4. GPU (OpenGL) rendering for large grids at full bandwidth
 5. Output the multiview itself as an NDI source
-6. Packaged installers (PyInstaller) for Windows and macOS
+6. ~~Windows and macOS builds~~; next: Apple notarization and a Windows installer
 
 ## Tests
 
 ```sh
 pip install pytest && python -m pytest -q
 ```
+
+## Building the apps locally
+
+```sh
+pip install -r requirements.txt pyinstaller
+pyinstaller packaging/ndi_multiviewer.spec   # dist/NDI Multiviewer(.app)
+```
+
+NDI® is a registered trademark of Vizrt NDI AB. The NDI runtime bundled via
+cyndilib is covered by its own license (`libndi_licenses.txt` in the build).
