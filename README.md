@@ -94,6 +94,10 @@ pip install pytest && python -m pytest -q
 
 ## Building the apps locally
 
+On a Mac, `bash build_mac.command` (or double-click it) does everything below
+and opens the folder with the finished app.
+
+
 ```sh
 pip install -r requirements.txt pyinstaller
 pyinstaller packaging/ndi_multiviewer.spec   # dist/NDI Multiviewer(.app)
