@@ -1,4 +1,5 @@
 import argparse
+import multiprocessing
 import sys
 from pathlib import Path
 
@@ -9,6 +10,8 @@ from .app import MainWindow
 
 
 def main() -> int:
+    # Packaged builds start the format helper process by re-running this executable.
+    multiprocessing.freeze_support()
     parser = argparse.ArgumentParser(prog="ndi-multiviewer", description="Watch several NDI sources in a grid.")
     parser.add_argument("--layout", type=Path, help="layout file to open and autosave to (default: per-user config)")
     parser.add_argument(
@@ -32,7 +35,14 @@ def main() -> int:
         import cyndilib
 
         print(f"NDI runtime: {cyndilib.get_ndi_version()}", flush=True)
-        QTimer.singleShot(2000, app.quit)
+
+        def finish() -> None:
+            # The format helper runs as a second copy of the app; make sure that works when packaged.
+            ok = win.prober is None or win.prober.is_alive()
+            print(f"Format helper running: {ok}", flush=True)
+            app.exit(0 if ok else 1)
+
+        QTimer.singleShot(4000, finish)
     return app.exec()
 
 

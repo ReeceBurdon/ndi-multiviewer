@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+from dataclasses import replace
 from pathlib import Path
 
 from PySide6.QtCore import QRect, QStandardPaths, Qt, QTimer, Signal
@@ -22,6 +23,7 @@ from PySide6.QtWidgets import (
 
 from . import layout as layouts
 from .layout import Layout
+from .format_probe import FormatProber
 from .ndi_backend import Frame, SourceFinder, TileReceiver
 
 FRAME_INTERVAL_MS = 33  # ~30 fps redraw
@@ -163,6 +165,8 @@ class MainWindow(QMainWindow):
         self.bandwidth = bandwidth
 
         self.finder = SourceFinder()
+        # Preview streams are scaled down, so the real resolution comes from a helper process.
+        self.prober = FormatProber() if bandwidth == "lowest" else None
         self.available: list[str] = []
         self.receivers: dict[int, TileReceiver] = {}
         self.tiles: list[TileWidget] = []
@@ -386,6 +390,8 @@ class MainWindow(QMainWindow):
         avail = set(names)
         for recv in self.receivers.values():
             recv.ensure_connected(avail)
+        if self.prober:
+            self.prober.want({r.source_name for r in self.receivers.values() if r.source_name in avail})
         self.source_count.setText(f"{len(names)} NDI source(s) on the network  ")
 
     def _pull_frames(self) -> None:
@@ -394,8 +400,19 @@ class MainWindow(QMainWindow):
                 continue
             recv = self.receivers.get(i)
             frame = recv.latest_frame() if recv else None
-            tile.format_text = recv.format.label() if recv and recv.format else ""
+            tile.format_text = self._format_label(recv) if recv else ""
             tile.set_frame(frame)
+
+    def _format_label(self, recv: TileReceiver) -> str:
+        fmt = recv.received_format
+        if fmt is None:
+            return ""
+        if not recv.full_bandwidth:
+            size = self.prober.sizes.get(recv.source_name) if self.prober else None
+            if size is None:
+                return ""
+            fmt = replace(fmt, width=size[0], height=size[1])
+        return fmt.label()
 
     def closeEvent(self, event) -> None:
         self.frame_timer.stop()
@@ -404,4 +421,6 @@ class MainWindow(QMainWindow):
         for r in self.receivers.values():
             r.close()
         self.finder.close()
+        if self.prober:
+            self.prober.close()
         super().closeEvent(event)

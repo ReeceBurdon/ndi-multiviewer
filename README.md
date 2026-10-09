@@ -19,8 +19,8 @@ source feeds each input.
   inputs' assignments, so growing it again restores them.
 - **Source format on every tile.** The bottom-right corner shows the
   resolution and frame rate the sender reports, e.g. `1920×1080p59.94`. In
-  preview mode the picture is scaled down, so the app checks the full-quality
-  stream every 10 seconds to show the real resolution.
+  preview mode the picture is scaled down, so a small helper process checks the
+  full-quality stream every 30 seconds to show the real resolution.
 - Double-click a tile to solo it full-window; double-click again to return.
 - F11 for fullscreen (Esc to leave), toggle labels, save and load named
   layouts as JSON files.

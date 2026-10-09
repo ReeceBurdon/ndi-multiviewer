@@ -7,7 +7,6 @@ enough and keeps the UI code free of locking.
 
 from __future__ import annotations
 
-import time
 from dataclasses import dataclass
 from fractions import Fraction
 
@@ -38,10 +37,6 @@ class VideoFormat:
         rate = float(self.frame_rate) * (1 if self.progressive else 2)
         rate_text = f"{rate:.2f}".rstrip("0").rstrip(".")
         return f"{self.width}×{self.height}{'p' if self.progressive else 'i'}{rate_text}"
-
-
-PROBE_INTERVAL_S = 10.0
-PROBE_TIMEOUT_S = 5.0
 
 
 class SourceFinder:
@@ -79,21 +74,15 @@ class TileReceiver:
         self.source_name: str | None = None
         self._connected_to: str | None = None
         self._last_timestamp = None
-        self._full_bandwidth = bw == ndi.RecvBandwidth.highest
-        self.format: VideoFormat | None = None
-        # In preview mode the frames we receive are scaled down (e.g. 640x360 for a
-        # 1080p source), so a short-lived full-quality receiver periodically checks
-        # the sender's real resolution.
-        self._probe: ndi.Receiver | None = None
-        self._probe_frame: ndi.VideoFrameSync | None = None
-        self._probe_started = 0.0
-        self._next_probe_at = 0.0
-        self._full_size: tuple[int, int] | None = None
+        self.full_bandwidth = bw == ndi.RecvBandwidth.highest
+        # Format of the frames actually received. In preview mode the size is the
+        # scaled-down preview; format_probe finds the real one.
+        self.received_format: VideoFormat | None = None
 
     def set_source(self, name: str | None) -> None:
         """Choose the source for this tile. It connects as soon as the source is discovered."""
         if name != self.source_name:
-            self._reset_format()
+            self.received_format = None
         self.source_name = name
         if self._connected_to is not None and name != self._connected_to:
             self._recv.disconnect()
@@ -132,49 +121,8 @@ class TileReceiver:
         return Frame(data, w, h, stride)
 
     def _update_format(self, w: int, h: int) -> None:
-        if self._full_bandwidth:
-            self._full_size = (w, h)
-        else:
-            self._probe_step()
-        if self._full_size is None:
-            self.format = None
-            return
         fps = self._frame.get_frame_rate()
-        self.format = VideoFormat(*self._full_size, Fraction(fps.numerator, fps.denominator), bool(self._frame.is_progressive))
-
-    def _probe_step(self) -> None:
-        now = time.monotonic()
-        if self._probe is None:
-            if now >= self._next_probe_at and self._connected_to:
-                self._probe = ndi.Receiver(
-                    color_format=ndi.RecvColorFormat.fastest,
-                    bandwidth=ndi.RecvBandwidth.highest,
-                    recv_name="multiviewer-format-probe",
-                )
-                self._probe_frame = ndi.VideoFrameSync()
-                self._probe.frame_sync.set_video_frame(self._probe_frame)
-                self._probe.set_source(self._finder.get_source(self._connected_to))
-                self._probe_started = now
-            return
-        self._probe.frame_sync.capture_video()
-        if self._probe_frame.xres and self._probe_frame.yres:
-            self._full_size = (self._probe_frame.xres, self._probe_frame.yres)
-            self._close_probe(now + PROBE_INTERVAL_S)
-        elif now - self._probe_started > PROBE_TIMEOUT_S:
-            self._close_probe(now + PROBE_INTERVAL_S)
-
-    def _close_probe(self, next_at: float) -> None:
-        if self._probe is not None:
-            self._probe.disconnect()
-        self._probe = None
-        self._probe_frame = None
-        self._next_probe_at = next_at
-
-    def _reset_format(self) -> None:
-        self._close_probe(0.0)
-        self._full_size = None
-        self.format = None
+        self.received_format = VideoFormat(w, h, Fraction(fps.numerator, fps.denominator), bool(self._frame.is_progressive))
 
     def close(self) -> None:
-        self._close_probe(0.0)
         self._recv.disconnect()
