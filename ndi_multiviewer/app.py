@@ -46,6 +46,7 @@ class TileWidget(QWidget):
         self.source_name: str | None = None
         self.available: list[str] = []
         self.show_labels = True
+        self.format_text = ""  # e.g. "1920×1080p59.94", drawn bottom-right
         self._image: QImage | None = None
         self._frame: Frame | None = None  # keeps the pixel buffer alive for _image
         self._last_frame_at = 0.0
@@ -104,6 +105,9 @@ class TileWidget(QWidget):
             p.fillRect(bar, QColor(0, 0, 0, 170))
             p.setPen(QColor(235, 235, 235))
             p.drawText(bar.adjusted(8, 0, -8, 0), Qt.AlignVCenter | Qt.AlignLeft, label)
+            if self.format_text and not status:
+                p.setPen(QColor(190, 190, 190))
+                p.drawText(bar.adjusted(8, 0, -8, 0), Qt.AlignVCenter | Qt.AlignRight, self.format_text)
 
         p.setPen(QColor(60, 60, 60))
         p.drawRect(self.rect().adjusted(0, 0, -1, -1))
@@ -390,6 +394,7 @@ class MainWindow(QMainWindow):
                 continue
             recv = self.receivers.get(i)
             frame = recv.latest_frame() if recv else None
+            tile.format_text = recv.format.label() if recv and recv.format else ""
             tile.set_frame(frame)
 
     def closeEvent(self, event) -> None:

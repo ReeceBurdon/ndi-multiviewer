@@ -3,7 +3,7 @@
 Watch several NDI sources at once in a grid you choose, and pick which NDI
 source feeds each input.
 
-![1+5 layout with five test sources and one offline input](docs/screenshot.png)
+![2x2 layout with three test sources showing their format](docs/screenshot.png)
 
 ## What it does
 
@@ -17,6 +17,10 @@ source feeds each input.
   NO SIGNAL.
 - **Changing layout keeps routing.** Shrinking the grid keeps the hidden
   inputs' assignments, so growing it again restores them.
+- **Source format on every tile.** The bottom-right corner shows the
+  resolution and frame rate the sender reports, e.g. `1920×1080p59.94`. In
+  preview mode the picture is scaled down, so the app checks the full-quality
+  stream every 10 seconds to show the real resolution.
 - Double-click a tile to solo it full-window; double-click again to return.
 - F11 for fullscreen (Esc to leave), toggle labels, save and load named
   layouts as JSON files.
